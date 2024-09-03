@@ -14,6 +14,7 @@ public interface TaskStatusRepository extends JpaRepository<TaskStatus, Long> {
         taskStatus.setResultExecution(String.format("%s,\n%s %s", status,
                                                                   timeStatusExecution,
                                                                   LocalDateTime.now().toString()));
+        taskStatus.setTimeStatusExecution(timeStatusExecution);
         save(taskStatus);
     }
 }

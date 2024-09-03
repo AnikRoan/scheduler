@@ -3,13 +3,11 @@ package com.roananik1988.controller;
 import com.roananik1988.entity.TaskRequest;
 import com.roananik1988.scheduler.SchedulerTaskRunner;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@Log4j2
 public class TaskController {
 
     private final SchedulerTaskRunner schedulerTaskRunner;

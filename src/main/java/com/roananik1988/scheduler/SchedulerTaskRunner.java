@@ -5,6 +5,7 @@ import com.roananik1988.entity.TaskStatus;
 import com.roananik1988.enums.TimeStatusExecution;
 import com.roananik1988.repository.TaskStatusRepository;
 import jakarta.annotation.PreDestroy;
+import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +17,7 @@ import java.util.concurrent.*;
 
 @Service
 @Log4j2
+@Getter
 public class SchedulerTaskRunner {
     @Value("${thread.count}")
     private int threadsCount;
@@ -25,6 +27,7 @@ public class SchedulerTaskRunner {
     public SchedulerTaskRunner(TaskStatusRepository taskStatusRepository) {
         this.taskStatusRepository = taskStatusRepository;
     }
+
     private final ScheduledThreadPoolExecutor scheduledThreadPoolExecutor =
             (ScheduledThreadPoolExecutor) Executors.newScheduledThreadPool(threadsCount);
 
@@ -41,7 +44,7 @@ public class SchedulerTaskRunner {
                 taskStatus.setTaskName(taskRequest.getTaskName());
                 taskStatus.setCreateTime(LocalDateTime.now());
                 taskStatus.setResultExecution(String.format(
-                        "%s %s",TimeStatusExecution.CREATED,taskStatus.getCreateTime().toString()));
+                        "%s %s", TimeStatusExecution.CREATED, taskStatus.getCreateTime().toString()));
 
                 log.info("Creating TaskStatus: {}", taskStatus);
 
@@ -49,17 +52,19 @@ public class SchedulerTaskRunner {
                 log.info("TaskStatus saved with ID: {}", taskStatus.getId());
 
                 taskStatusRepository.update(taskStatus.getId(), TimeStatusExecution.STARTED);
+                taskStatus.setTimeStatusExecution(TimeStatusExecution.STARTED);
                 log.info("Task status updated to STARTED");
 
-                Thread.sleep(5000);
+                Thread.sleep(500);
 
                 taskStatusRepository.update(taskStatus.getId(), TimeStatusExecution.COMPLETED);
+                taskStatus.setTimeStatusExecution(TimeStatusExecution.COMPLETED);
                 log.info("Task status updated to COMPLETED");
 
             } catch (InterruptedException e) {
                 log.error("Task execution interrupted", e);
                 taskStatusRepository.update(taskRequest.getId(), TimeStatusExecution.INTERRUPTED);
-                log.info("Task status updated to FAILED");
+                log.info("Task status updated to INTERRUPTED");
                 Thread.currentThread().interrupt();
             } catch (Exception e) {
                 log.error("Unexpected error during task execution", e);
@@ -86,14 +91,16 @@ public class SchedulerTaskRunner {
 
     public String getWaitingTasks() {
         BlockingQueue<Runnable> queue = scheduledThreadPoolExecutor.getQueue();
-        return "in the queue waiting tasks: " + queue.size();
+        return String.format("in the queue waiting tasks: %s", queue.size());
+
     }
 
     public String stopTask(Long taskId) {
         ScheduledFuture<?> future = tasks.get(taskId);
         if (future != null) {
             future.cancel(true);
-            return "Task " + taskId + " stopped";
+
+            return String.format("Task %s stopped", taskId);
 
         }
         return "Task not found";
