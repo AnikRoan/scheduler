@@ -1,17 +1,20 @@
 package com.roananik1988.scheduler;
 
-import com.roananik1988.entity.TaskRequest;
 import com.roananik1988.entity.TaskStatus;
+import com.roananik1988.enums.Executor;
+import com.roananik1988.enums.TaskType;
 import com.roananik1988.enums.TimeStatusExecution;
-import com.roananik1988.repository.TaskStatusRepository;
+import com.roananik1988.service.TaskService;
 import jakarta.annotation.PreDestroy;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 
@@ -21,63 +24,84 @@ import java.util.concurrent.*;
 public class SchedulerTaskRunner {
     @Value("${thread.count}")
     private int threadsCount;
-    private final TaskStatusRepository taskStatusRepository;
 
     @Autowired
-    public SchedulerTaskRunner(TaskStatusRepository taskStatusRepository) {
-        this.taskStatusRepository = taskStatusRepository;
-    }
+    private TaskService taskService;
+
 
     private final ScheduledThreadPoolExecutor scheduledThreadPoolExecutor =
             (ScheduledThreadPoolExecutor) Executors.newScheduledThreadPool(threadsCount);
 
     private final Map<Long, ScheduledFuture<?>> tasks = new ConcurrentHashMap<>();
+    private final BlockingQueue<TaskStatus> simpleTaskQueue = new LinkedBlockingQueue<>();
 
+    @Scheduled(fixedDelay = 10000)
+    public void checkTasks() {
+        List<Executor> executors = taskService.getAllExecutors();
+        for (Executor executor : executors) {
+            List<TaskStatus> taskStatuses = taskService.getPendingTasks(executor);
+            Iterator<TaskStatus> iterator = taskStatuses.iterator();
+            long countRunSimpleTasks = 0;
 
-    public void execute(TaskRequest taskRequest) {
-        Long delay = taskRequest.getTimestamp().toSeconds();
+            while (iterator.hasNext()) {
+                TaskStatus taskStatus = iterator.next();
+                if (taskStatus.getTaskType() == TaskType.SIMPLE && countRunSimpleTasks != 1) {
+                    simpleTaskQueue.offer(taskStatus);
+                    iterator.remove();
+                    countRunSimpleTasks++;
+                    startTaskProcessor();
 
-        ScheduledFuture<?> scheduledFuture = scheduledThreadPoolExecutor.schedule(() -> {
-            try {
-                TaskStatus taskStatus = new TaskStatus();
-                taskStatus.setId(taskRequest.getId());
-                taskStatus.setTaskName(taskRequest.getTaskName());
-                taskStatus.setCreateTime(LocalDateTime.now());
-                taskStatus.setResultExecution(String.format(
-                        "%s %s", TimeStatusExecution.CREATED, taskStatus.getCreateTime().toString()));
-
-                log.info("Creating TaskStatus: {}", taskStatus);
-
-                taskStatusRepository.save(taskStatus);
-                log.info("TaskStatus saved with ID: {}", taskStatus.getId());
-
-                taskStatusRepository.update(taskStatus.getId(), TimeStatusExecution.STARTED);
-                taskStatus.setTimeStatusExecution(TimeStatusExecution.STARTED);
-                log.info("Task status updated to STARTED");
-
-                Thread.sleep(500);
-
-                taskStatusRepository.update(taskStatus.getId(), TimeStatusExecution.COMPLETED);
-                taskStatus.setTimeStatusExecution(TimeStatusExecution.COMPLETED);
-                log.info("Task status updated to COMPLETED");
-
-            } catch (InterruptedException e) {
-                log.error("Task execution interrupted", e);
-                taskStatusRepository.update(taskRequest.getId(), TimeStatusExecution.INTERRUPTED);
-                log.info("Task status updated to INTERRUPTED");
-                Thread.currentThread().interrupt();
-            } catch (Exception e) {
-                log.error("Unexpected error during task execution", e);
-            } finally {
-                tasks.remove(taskRequest.getId());
+                } else {
+                    execute(taskStatus);
+                }
             }
-        }, delay, TimeUnit.SECONDS);
+        }
+    }
 
-        tasks.put(taskRequest.getId(), scheduledFuture);
+    private void startTaskProcessor() {
+        scheduledThreadPoolExecutor.scheduleAtFixedRate(() -> {
+            TaskStatus taskStatus = simpleTaskQueue.poll();
+            if (taskStatus != null) {
+                execute(taskStatus);
+            }
+        }, 0, 1, TimeUnit.SECONDS);
+    }
+
+
+    private void execute(TaskStatus taskStatus) {
+        Long delay = taskStatus.getScheduledTime().toSeconds();
+        ScheduledFuture<?> scheduledFuture = scheduledThreadPoolExecutor.schedule(() -> runTask(taskStatus)
+                , delay, TimeUnit.SECONDS);
+
+        tasks.put(taskStatus.getId(), scheduledFuture);
+        log.info("\nTask " + tasks.size());
+    }
+
+    private void runTask(TaskStatus taskStatus) {
+        try {
+            taskService.update(taskStatus.getId(), TimeStatusExecution.STARTED);
+            log.info("Task status updated to STARTED");
+
+            Thread.sleep(9000);
+            taskService.update(taskStatus.getId(), TimeStatusExecution.COMPLETED);
+            log.info("Task status updated to COMPLETED");
+
+        } catch (InterruptedException e) {
+            log.error("Task execution interrupted", e);
+            taskService.update(taskStatus.getId(), TimeStatusExecution.INTERRUPTED);
+            log.info("Task status updated to INTERRUPTED");
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            log.error("Unexpected error during task execution", e);
+        } finally {
+            tasks.remove(taskStatus.getId());
+            simpleTaskQueue.remove(taskStatus);
+        }
+
     }
 
     public String getStatus(Long taskId) {
-        TaskStatus taskStatus = taskStatusRepository.findById(taskId).orElse(null);
+        TaskStatus taskStatus = taskService.getTaskStatus(taskId);
         if (taskStatus == null) {
             ScheduledFuture<?> future = tasks.get(taskId);
             if (future != null) {
@@ -95,15 +119,19 @@ public class SchedulerTaskRunner {
 
     }
 
-    public String stopTask(Long taskId) {
+    public TaskStatus stopTask(Long taskId) {
         ScheduledFuture<?> future = tasks.get(taskId);
         if (future != null) {
+            while (future.getDelay(TimeUnit.SECONDS) > 0) {
+            }
             future.cancel(true);
 
-            return String.format("Task %s stopped", taskId);
+            return taskService.getTaskStatus(taskId);
 
         }
-        return "Task not found";
+        return TaskStatus.builder()
+                .taskName("Task not found")
+                .build();
     }
 
     @PreDestroy

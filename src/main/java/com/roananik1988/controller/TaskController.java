@@ -1,23 +1,33 @@
 package com.roananik1988.controller;
 
+import com.roananik1988.dto.TaskRequestDto;
 import com.roananik1988.entity.TaskRequest;
+import com.roananik1988.entity.TaskStatus;
 import com.roananik1988.scheduler.SchedulerTaskRunner;
+import com.roananik1988.service.TaskService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+
 @RestController
 @RequiredArgsConstructor
+@RequestMapping("/tasks")
 public class TaskController {
 
     private final SchedulerTaskRunner schedulerTaskRunner;
+    private final TaskService taskService;
 
     @PostMapping
-    public ResponseEntity<TaskRequest> createJob(@RequestBody TaskRequest taskRequest) {
+    public ResponseEntity<TaskRequest> createJob(@Valid @RequestBody TaskRequestDto taskRequest) {
         TaskRequest task = new TaskRequest();
         task.setTaskName(taskRequest.getTaskName());
-        task.setTimestamp(taskRequest.getTimestamp());
-        schedulerTaskRunner.execute(task);
+        task.setExecutor(taskRequest.getExecutor());
+        task.setTaskType(taskRequest.getTaskType());
+        task.setScheduledTime(taskRequest.getScheduledTime());
+
+        taskService.save(task);
         return ResponseEntity.ok().body(task);
     }
 
@@ -32,7 +42,7 @@ public class TaskController {
     }
 
     @DeleteMapping("/{taskId}")
-    public ResponseEntity<String> stopJob(@PathVariable Long taskId) {
+    public ResponseEntity<TaskStatus> stopJob(@PathVariable Long taskId) {
         return ResponseEntity.ok().body(schedulerTaskRunner.stopTask(taskId));
     }
 }

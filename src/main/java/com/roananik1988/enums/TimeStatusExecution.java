@@ -1,7 +1,7 @@
 package com.roananik1988.enums;
 
 
-public enum TimeStatusExecution{
+public enum TimeStatusExecution {
     CREATED,
     PENDING,
     STARTED,
