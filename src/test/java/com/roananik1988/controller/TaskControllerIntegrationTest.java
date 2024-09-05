@@ -47,6 +47,7 @@ class TaskControllerIntegrationTest {
     @Test
     @Order(1)
     void getInfoWaitingJobs() throws Exception {
+        //Test
         mockMvc.perform(get("/tasks"))
                 .andExpect(status().isOk())
                 .andExpect(MockMvcResultMatchers.content().string("in the queue waiting tasks: 0"));
@@ -55,6 +56,7 @@ class TaskControllerIntegrationTest {
     @Test
     @Order(2)
     void getInfoWaitingJobs2() throws Exception {
+        //Data
         TaskStatus taskStatus = new TaskStatus();
         taskStatus.setId(1L);
         taskStatus.setTaskName("Task 1");
@@ -76,7 +78,7 @@ class TaskControllerIntegrationTest {
         taskStatusRepository.save(taskStatus);
         taskStatusRepository.save(taskStatus1);
         TimeUnit.SECONDS.sleep(11);
-
+        //Test
         mockMvc.perform(get("/tasks"))
                 .andExpect(status().isOk())
                 .andExpect(MockMvcResultMatchers.content().string("in the queue waiting tasks: 2"));
@@ -84,12 +86,13 @@ class TaskControllerIntegrationTest {
 
     @Test
     void createJob() throws Exception {
+        //Data
         TaskRequestDto taskRequest = new TaskRequestDto();
         taskRequest.setTaskName("Task 1");
         taskRequest.setExecutor(Executor.JON_HENDERSON);
         taskRequest.setTaskType(TaskType.SIMPLE);
         taskRequest.setScheduledTime(Duration.ofSeconds(1));
-
+        //Test
         mockMvc.perform(post("/tasks")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(taskRequest)))
@@ -100,7 +103,7 @@ class TaskControllerIntegrationTest {
 
     @Test
     void getInfoAboutJob() throws Exception {
-
+        //Data
         TaskStatus taskStatus = new TaskStatus();
         taskStatus.setId(1L);
         taskStatus.setTaskName("Task 1");
@@ -110,7 +113,7 @@ class TaskControllerIntegrationTest {
         taskStatus.setTimeStatusExecution(TimeStatusExecution.PENDING);
         taskStatus.setResultExecution(String.format("Task is PENDING"));
         taskStatusRepository.save(taskStatus);
-
+        //Test
         mockMvc.perform(get("/tasks/" + 1L))
                 .andExpect(status().isOk())
                 .andExpect(content().string(String.format("Task %s:\nTask is PENDING", 1L)));
@@ -118,6 +121,7 @@ class TaskControllerIntegrationTest {
 
     @Test
     void stopJob() throws Exception {
+        //Data
         TaskStatus taskStatus = new TaskStatus();
         taskStatus.setId(3L);
         taskStatus.setTaskName("Task 1");
@@ -129,12 +133,15 @@ class TaskControllerIntegrationTest {
         taskStatus.setResultExecution(String.format("%s %s", TimeStatusExecution.CREATED, LocalDateTime.now().toString()));
         taskStatusRepository.save(taskStatus);
         TimeUnit.SECONDS.sleep(15);
+        //Test
         mockMvc.perform(delete("/tasks/" + 3L))
                 .andExpect(status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("$.taskName").value("Task 1"));
 
         TimeUnit.SECONDS.sleep(5);
+        //Data
         TaskStatus taskStatus1 = taskStatusRepository.findById(3L).get();
+        //When
         assertNotNull(taskStatus1);
         assertEquals(taskStatus1.getTimeStatusExecution(), TimeStatusExecution.INTERRUPTED);
 

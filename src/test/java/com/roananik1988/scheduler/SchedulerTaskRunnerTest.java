@@ -39,11 +39,13 @@ class SchedulerTaskRunnerTest {
 
     @Test
     void checkTasksTest() {
+        //Mock
         when(taskService.getAllExecutors()).thenReturn(List.of(executor));
         when(taskService.getPendingTasks(executor)).thenReturn(new ArrayList<>(List.of(taskStatus)));
         when(taskStatus.getTaskType()).thenReturn(TaskType.SIMPLE);
 
         schedulerTaskRunner.checkTasks();
+        //Assert & Verify
         verify(taskService).getAllExecutors();
         verify(taskService).getPendingTasks(executor);
 
@@ -51,31 +53,34 @@ class SchedulerTaskRunnerTest {
 
     @Test
     void getStatusTest() {
+        //Data
         schedulerTaskRunner.getTasks().put(1L, scheduledFuture);
-
         String status = schedulerTaskRunner.getStatus(1L);
+        //When
         assertNotNull(status);
         assertEquals("Task is PENDING", status);
     }
 
     @Test
     void getWaitingTasks() {
+        //Data
         String result = schedulerTaskRunner.getWaitingTasks();
-
+        //When
         assertNotNull(result);
-
         assertEquals("in the queue waiting tasks: 0", result);
     }
 
     @Test
     void stopTaskTest() {
+        //Mock
         when(scheduledFuture.getDelay(any())).thenReturn(0L);
         schedulerTaskRunner.getTasks().put(1L, scheduledFuture);
         when(taskService.getTaskStatus(anyLong())).thenReturn(TaskStatus.builder().id(1L).build());
-
+        //Data
        TaskStatus result = schedulerTaskRunner.stopTask(1L);
-
+        //When
        assertNotNull(result);
+       //Assert & Verify
        verify(scheduledFuture).cancel(true);
 
     }

@@ -38,6 +38,7 @@ class TaskControllerTest {
 
     @Test
     void createJob() throws Exception {
+        //Data
         TaskStatus taskStatus = new TaskStatus();
         taskStatus.setTaskName("Task 1");
         taskStatus.setExecutor(Executor.JON_HENDERSON);
@@ -52,9 +53,9 @@ class TaskControllerTest {
 
         taskStatus.setId(taskRequest.getId());
 
-
+        //Mock
         when(taskService.save(taskRequest)).thenReturn(taskStatus);
-
+        //Test
         mockMvc.perform(post("/tasks")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(taskStatus)))
@@ -67,8 +68,9 @@ class TaskControllerTest {
 
     @Test
     void getInfoAboutJobTest() throws Exception {
+        //Mock
         when(schedulerTaskRunner.getStatus(any())).thenReturn("Task is PENDING");
-
+        //Test
         mockMvc.perform(get("/tasks/1"))
                 .andExpect(status().isOk())
                 .andExpect(MockMvcResultMatchers.content().string("Task 1:\nTask is PENDING"));
@@ -76,8 +78,9 @@ class TaskControllerTest {
 
     @Test
     void getInfoWaitingJobs() throws Exception {
+        //Mock
         when(schedulerTaskRunner.getWaitingTasks()).thenReturn("in the queue waiting tasks: 3");
-
+        //Test
         mockMvc.perform(get("/tasks"))
                 .andExpect(status().isOk())
                 .andExpect(MockMvcResultMatchers.content().string("in the queue waiting tasks: 3"));
@@ -85,12 +88,12 @@ class TaskControllerTest {
 
     @Test
     void stopJob() throws Exception {
-
+        //Data
         TaskStatus taskStatus = new TaskStatus();
         taskStatus.setTaskName("Task 1");
-
+        //Mock
         when(schedulerTaskRunner.stopTask(any())).thenReturn(taskStatus);
-
+        //Test
         mockMvc.perform(delete("/tasks/1"))
                 .andExpect(status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("$.taskName").value("Task 1"));

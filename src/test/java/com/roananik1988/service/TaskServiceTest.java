@@ -18,7 +18,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -33,14 +34,14 @@ class TaskServiceTest {
 
     @BeforeEach
     void setUp() {
-         taskRequest = TaskRequest.builder()
+        taskRequest = TaskRequest.builder()
                 .taskName("Task 1")
                 .executor(Executor.JON_HENDERSON)
                 .taskType(TaskType.SIMPLE)
                 .scheduledTime(Duration.ofSeconds(1))
                 .build();
 
-         taskStatus = TaskStatus.builder()
+        taskStatus = TaskStatus.builder()
                 .id(1L)
                 .taskName("Task 1")
                 .executor(Executor.JON_HENDERSON)
@@ -57,74 +58,89 @@ class TaskServiceTest {
 
     @Test
     void saveTest() {
+        //Mock
         when(taskStatusRepository.save(any(TaskStatus.class))).thenReturn(taskStatus);
-
+        //Data
         TaskStatus task = taskService.save(taskRequest);
-
+        //When
         assertEquals(taskStatus, task);
+        //Assert & Verify
         verify(taskStatusRepository, times(1)).save(any(TaskStatus.class));
 
     }
 
     @Test
     void getPendingTasksTest() {
+        //Mock
         when(taskStatusRepository.findByTimeStatusExecution(Executor.JON_HENDERSON, TimeStatusExecution.PENDING))
                 .thenReturn(List.of(taskStatus));
-
+        //Data
         List<TaskStatus> tasks = taskService.getPendingTasks(Executor.JON_HENDERSON);
-
+        //When
         assertEquals(1, tasks.size());
         assertEquals(taskStatus, tasks.get(0));
+        //Assert & Verify
         verify(taskStatusRepository, times(1))
                 .findByTimeStatusExecution(Executor.JON_HENDERSON, TimeStatusExecution.PENDING);
     }
 
     @Test
     void getAllExecutorsTest() {
+        //Mock
         when(taskStatusRepository.findAllExecutors()).thenReturn(List.of(
-                                                                 Executor.JON_HENDERSON,Executor.WILLIAM_SHAKESPEARE));
+                Executor.JON_HENDERSON, Executor.WILLIAM_SHAKESPEARE));
+        //Data
         List<Executor> executors = taskService.getAllExecutors();
-
+        //When
         assertEquals(2, executors.size());
 
+        //Assert & Verify
         verify(taskStatusRepository, times(1)).findAllExecutors();
     }
 
     @Test
     void updateTest() {
+        //Mock
         when(taskStatusRepository.findById(1L)).thenReturn(Optional.of(taskStatus));
 
         taskService.update(1L, TimeStatusExecution.COMPLETED);
-
+        //When
         assertEquals(TimeStatusExecution.COMPLETED, taskStatus.getTimeStatusExecution());
-
-        verify(taskStatusRepository,times(1)).findById(1L);
-        verify(taskStatusRepository,times(1)).save(any(TaskStatus.class));
+        //Assert & Verify
+        verify(taskStatusRepository, times(1)).findById(1L);
+        verify(taskStatusRepository, times(1)).save(any(TaskStatus.class));
     }
+
     @Test
     void updateNotFoundTest() {
+        //Mock
         when(taskStatusRepository.findById(1L)).thenReturn(Optional.empty());
-
-        assertThrows(RuntimeException.class,()->taskService.update(1L,TimeStatusExecution.COMPLETED));
-
+        //When
+        assertThrows(RuntimeException.class, () -> taskService.update(1L, TimeStatusExecution.COMPLETED));
+        //Assert & Verify
         verify(taskStatusRepository, times(1)).findById(1L);
     }
 
     @Test
     void getTaskStatusTest() {
+        //Mock
         when(taskStatusRepository.findById(1L)).thenReturn(Optional.of(taskStatus));
+        //Data
         TaskStatus task = taskService.getTaskStatus(1L);
-
+        //When
         assertEquals(taskStatus, task);
+        //Assert & Verify
         verify(taskStatusRepository, times(1)).findById(1L);
 
     }
+
     @Test
     void getTaskStatusNotFoundTest() {
+        //Mock
         when(taskStatusRepository.findById(1L)).thenReturn(Optional.empty());
-
-       assertThrows(RuntimeException.class, () -> taskService.getTaskStatus(1L));
-
-       verify(taskStatusRepository, times(1)).findById(1L);
+        //When
+        assertThrows(RuntimeException.class, () -> taskService.getTaskStatus(1L));
+        //Assert & Verify
+        verify(taskStatusRepository, times(1)).findById(1L);
     }
 }
