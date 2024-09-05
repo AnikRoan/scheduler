@@ -3,15 +3,12 @@ package com.roananik1988.entity;
 import com.roananik1988.enums.Executor;
 import com.roananik1988.enums.TaskType;
 import com.roananik1988.enums.TimeStatusExecution;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.*;
 
 import java.time.Duration;
 import java.util.UUID;
 
-
+@Builder
 @Getter
 @Setter
 @ToString
